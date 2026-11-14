@@ -162,16 +162,21 @@ object ServerStore {
         val tag = line.substringAfter('#', "").let {
             runCatching { URLDecoder.decode(it, "UTF-8") }.getOrDefault(it)
         }
-        if (proto != "vless") {
-            return Server(tag.ifBlank { proto.take(12).uppercase() }, proto.take(12), line,
-                unsupportedReason = "протокол ${proto.take(12).uppercase()} не поддерживается")
+        if (proto == "vless") {
+            return try {
+                val c = VlessParser.parse(line)
+                Server(c.name.ifBlank { c.host }, "vless", line, c.host, c.port,
+                    if (c.host in stubHosts || c.port <= 1) STUB_REASON else null)
+            } catch (e: IllegalArgumentException) {
+                Server(tag.ifBlank { "VLESS" }, "vless", line, unsupportedReason = e.message ?: "некорректная ссылка")
+            }
         }
-        return try {
-            val c = VlessParser.parse(line)
-            Server(c.name.ifBlank { c.host }, "vless", line, c.host, c.port,
-                if (c.host in stubHosts || c.port <= 1) STUB_REASON else null)
-        } catch (e: IllegalArgumentException) {
-            Server(tag.ifBlank { "VLESS" }, "vless", line, unsupportedReason = e.message ?: "некорректная ссылка")
+        return runCatching {
+            val parsed = ProxyUriParser.parse(line)
+            Server(parsed.name, parsed.protocol, line, parsed.host, parsed.port)
+        }.getOrElse { e ->
+            Server(tag.ifBlank { proto.take(12).uppercase() }, proto.take(12), line,
+                unsupportedReason = e.message ?: "ссылка не поддерживается")
         }
     }
 
