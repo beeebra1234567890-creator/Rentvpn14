@@ -116,7 +116,7 @@ object VpnController {
 
     /** SOCKS для теста внутри туннеля; null — если активен не VLESS (WireGuard тестируется напрямую). */
     fun socksForTest(c: Context): SocksInfo? {
-        if (_state.value != VpnState.CONNECTED || activeProtocol != "vless") return null
+        if (_state.value != VpnState.CONNECTED || activeProtocol !in setOf("vless", "vmess", "trojan", "shadowsocks", "socks", "http")) return null
         val p = prefs(c)
         val port = p.getInt("socks_port", 0)
         val user = p.getString("socks_user", null)
