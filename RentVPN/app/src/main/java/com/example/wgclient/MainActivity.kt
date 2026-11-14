@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -221,7 +222,8 @@ private fun RentVpnApp() {
                     0 -> HomeScreen(
                         state = state, server = server, ping = server?.let { pings[it.raw] },
                         traffic = traffic, elapsed = elapsed, message = message,
-                        onToggle = { toggle() }, onServers = { tab = 2 }, onPro = { tab = 3 }
+                        onToggle = { toggle() }, onServers = { tab = 2 }, onPro = { tab = 3 },
+                        wideLayout = LocalConfiguration.current.screenWidthDp >= 700
                     )
                     1 -> SpeedTestScreen(speed, viaVpn = state == VpnState.CONNECTED && (VpnController.isWireGuardConnected() || VpnController.socksForTest(context) != null), onStart = { runSpeed() })
                     2 -> ServerScreen(
@@ -269,64 +271,119 @@ private fun RentVpnApp() {
 @Composable
 private fun HomeScreen(
     state: VpnState, server: Server?, ping: Int?, traffic: Traffic, elapsed: Long, message: String,
-    onToggle: () -> Unit, onServers: () -> Unit, onPro: () -> Unit,
+    onToggle: () -> Unit, onServers: () -> Unit, onPro: () -> Unit, wideLayout: Boolean,
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
-        // верхняя строка: статус + PRO
-        Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
-            ShieldIcon(state == VpnState.CONNECTED, Modifier.size(26.dp))
-            Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) {
-                Text("Статус подключения", color = Muted, fontSize = 10.sp)
-                Text(
-                    when (state) {
-                        VpnState.DISCONNECTED -> "Не подключено"
-                        VpnState.CONNECTING -> "Подключение…"
-                        VpnState.CONNECTED -> "Подключено"
-                    },
-                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium
-                )
+    if (wideLayout) {
+        Row(
+            Modifier.fillMaxSize().padding(horizontal = 30.dp, vertical = 24.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(28.dp)
+        ) {
+            Box(Modifier.weight(1.05f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(320.dp), contentAlignment = Alignment.Center) {
+                    ParticleOrb(state, Modifier.fillMaxSize())
+                    PowerButton(state, onToggle, Modifier.size(236.dp))
+                }
             }
-            Text("PRO", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.width(10.dp))
-            Box(
-                Modifier.size(42.dp).clip(CircleShape).background(Lime)
-                    .clickable(remember { MutableInteractionSource() }, null, onClick = onPro),
-                contentAlignment = Alignment.Center
-            ) { CrownIcon(Modifier.size(22.dp)) }
-        }
-
-        // таймер (место резервируется, чтобы макет не прыгал)
-        Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
-            if (state == VpnState.CONNECTED) {
-                Text(formatTime(elapsed), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+            Column(
+                Modifier.weight(0.95f).fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    ShieldIcon(state == VpnState.CONNECTED, Modifier.size(30.dp))
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Статус подключения", color = Muted, fontSize = 12.sp)
+                        Text(
+                            when (state) {
+                                VpnState.DISCONNECTED -> "Не подключено"
+                                VpnState.CONNECTING -> "Подключение…"
+                                VpnState.CONNECTED -> "Подключено"
+                            },
+                            color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Box(
+                        Modifier.size(48.dp).clip(CircleShape).background(Lime)
+                            .clickable(remember { MutableInteractionSource() }, null, onClick = onPro),
+                        contentAlignment = Alignment.Center
+                    ) { CrownIcon(Modifier.size(24.dp)) }
+                }
+                Card2(Modifier.fillMaxWidth()) {
+                    Text("ВРЕМЯ СЕАНСА", color = Muted, fontSize = 11.sp, letterSpacing = 1.2.sp)
+                    Text(
+                        if (state == VpnState.CONNECTED) ${formatTime(elapsed)} else "00:00:00",
+                        color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        SpeedCell("↑", "Отдача", traffic.up, Modifier.weight(1f))
+                        Box(Modifier.width(1.dp).height(44.dp).background(LineC))
+                        SpeedCell("↓", "Загрузка", traffic.down, Modifier.weight(1f))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Отправлено  ${formatBytes(traffic.upTotal)}", color = Muted, fontSize = 11.sp)
+                        Text("Получено  ${formatBytes(traffic.downTotal)}", color = Muted, fontSize = 11.sp)
+                    }
+                }
+                if (message.isNotBlank()) {
+                    val bad = message.contains("Не удалось") || message.contains("Ошибка") || message.contains("не поддерж") ||
+                        message.contains("Некорректн") || message.contains("не выдано") || message.contains("Сначала")
+                    Text(message, color = if (bad) Bad else Lime, fontSize = 12.sp,
+                        modifier = Modifier.fillMaxWidth(), maxLines = 3, overflow = TextOverflow.Ellipsis)
+                }
+                ServerPill(server, ping, onServers)
             }
         }
-
-        // скорость
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            SpeedCell("↑", "Отдача", traffic.up, Modifier.weight(1f))
-            Box(Modifier.width(1.dp).height(38.dp).background(LineC))
-            SpeedCell("↓", "Загрузка", traffic.down, Modifier.weight(1f))
+    } else {
+        Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
+            Row(Modifier.fillMaxWidth().padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                ShieldIcon(state == VpnState.CONNECTED, Modifier.size(26.dp))
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("Статус подключения", color = Muted, fontSize = 10.sp)
+                    Text(
+                        when (state) {
+                            VpnState.DISCONNECTED -> "Не подключено"
+                            VpnState.CONNECTING -> "Подключение…"
+                            VpnState.CONNECTED -> "Подключено"
+                        },
+                        color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium
+                    )
+                }
+                Text("PRO", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.width(10.dp))
+                Box(
+                    Modifier.size(42.dp).clip(CircleShape).background(Lime)
+                        .clickable(remember { MutableInteractionSource() }, null, onClick = onPro),
+                    contentAlignment = Alignment.Center
+                ) { CrownIcon(Modifier.size(22.dp)) }
+            }
+            Box(Modifier.fillMaxWidth().height(64.dp), contentAlignment = Alignment.Center) {
+                if (state == VpnState.CONNECTED) {
+                    Text(formatTime(elapsed), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SpeedCell("↑", "Отдача", traffic.up, Modifier.weight(1f))
+                Box(Modifier.width(1.dp).height(38.dp).background(LineC))
+                SpeedCell("↓", "Загрузка", traffic.down, Modifier.weight(1f))
+            }
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ParticleOrb(state, Modifier.fillMaxWidth().aspectRatio(1f))
+                PowerButton(state, onToggle)
+            }
+            if (message.isNotBlank()) {
+                val bad = message.contains("Не удалось") || message.contains("Ошибка") || message.contains("не поддерж") ||
+                    message.contains("Некорректн") || message.contains("не выдано") || message.contains("Сначала")
+                Text(message, color = if (bad) Bad else Lime, fontSize = 12.sp,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+            ServerPill(server, ping, onServers)
+            Spacer(Modifier.height(16.dp))
         }
-
-        // шар + кнопка
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            ParticleOrb(state, Modifier.fillMaxWidth().aspectRatio(1f))
-            PowerButton(state, onToggle)
-        }
-
-        if (message.isNotBlank()) {
-            val bad = message.contains("Не удалось") || message.contains("Ошибка") || message.contains("не поддерж") ||
-                message.contains("Некорректн") || message.contains("не выдано") || message.contains("Сначала")
-            Text(
-                message, color = if (bad) Bad else Lime, fontSize = 12.sp,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp), maxLines = 3, overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        ServerPill(server, ping, onServers)
-        Spacer(Modifier.height(16.dp))
     }
 }
 
