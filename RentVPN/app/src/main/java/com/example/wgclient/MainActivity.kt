@@ -399,7 +399,7 @@ private fun ServerScreen(
 
         OutlinedTextField(
             value = input, onValueChange = onInput, modifier = Modifier.fillMaxWidth(), minLines = 2, maxLines = 5,
-            label = { Text("Подписка (https://), vless:// или WireGuard-конфиг") },
+            label = { Text("Подписка, VLESS / VMess / Trojan / SS / SOCKS5 / HTTP или WireGuard") },
             colors = fieldColors(),
             textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace, fontSize = 12.sp),
             shape = RoundedCornerShape(18.dp)
@@ -471,8 +471,9 @@ private fun ProfileScreen(onClear: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Профиль", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         InfoRow("Приложение", "RENT VPN · версия 1.2")
-        InfoRow("VLESS", "TCP · WebSocket · gRPC · HTTPUpgrade · XHTTP\nTLS · Reality · xtls-rprx-vision")
+        InfoRow("Прокси", "VLESS (TLS / Reality), VMess, Trojan, Shadowsocks, SOCKS5, HTTP Proxy")
         InfoRow("WireGuard", "Импорт .conf, вставка из буфера")
+        InfoRow("Импорт", "Ссылки, HTTPS-подписки, файлы и QR-код из изображения")
         InfoRow("Хранение", "Серверы и подписка — локально на устройстве")
         Spacer(Modifier.height(4.dp))
         OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
