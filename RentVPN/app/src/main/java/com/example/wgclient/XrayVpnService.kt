@@ -79,13 +79,14 @@ class XrayVpnService : VpnService() {
 
             val builder = Builder()
                 .setSession("RENT VPN")
-                .setMtu(1500)
+                .setMtu(VpnSettings.mtu(this))
                 .addAddress("172.19.0.1", 30)
-                .addAddress("fdfe:dcba:9876::1", 126)
                 .addRoute("0.0.0.0", 0)
-                .addRoute("::", 0)
-                .addDnsServer("1.1.1.1")
-                .addDnsServer("8.8.8.8")
+            if (VpnSettings.ipv6Enabled(this)) {
+                builder.addAddress("fdfe:dcba:9876::1", 126)
+                    .addRoute("::", 0)
+            }
+            VpnSettings.dnsServers(this).forEach { builder.addDnsServer(it) }
             runCatching { builder.addDisallowedApplication(packageName) }
 
             val pfd = builder.establish()
