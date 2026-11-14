@@ -139,13 +139,16 @@ object VpnController {
         activeProtocol = server.protocol
 
         when (server.protocol) {
-            "vless" -> {
+            "vless", "vmess", "trojan", "shadowsocks", "socks", "http" -> {
                 val socks = newSocks(app)
                 val json = try {
-                    if (server.raw.trimStart().startsWith("{")) XrayJson.build(server.raw, socks)
-                    else VlessParser.parse(server.raw).toXrayJson(socks)
+                    when (server.protocol) {
+                        "vless" -> if (server.raw.trimStart().startsWith("{")) XrayJson.build(server.raw, socks)
+                            else VlessParser.parse(server.raw).toXrayJson(socks)
+                        else -> ProxyUriParser.toXrayJson(server.raw, socks)
+                    }
                 } catch (e: Exception) {
-                    fail("Некорректная VLESS-ссылка: ${e.message}")
+                    fail("Некорректная конфигурация ${server.protocol.uppercase()}: ${e.message}")
                     return
                 }
                 val intent = Intent(app, XrayVpnService::class.java)
@@ -170,7 +173,7 @@ object VpnController {
     fun disconnect(context: Context) {
         val app = context.applicationContext
         when (activeProtocol) {
-            "vless" -> {
+            "vless", "vmess", "trojan", "shadowsocks", "socks", "http" -> {
                 // Wait for the service to close Xray and TUN and publish DISCONNECTED.
                 val stopped = app.stopService(Intent(app, XrayVpnService::class.java))
                 if (!stopped) setState(VpnState.DISCONNECTED)
