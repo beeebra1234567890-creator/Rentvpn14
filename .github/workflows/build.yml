@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, source-extract]
   workflow_dispatch:
 
 jobs:
@@ -10,12 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Unzip project
-        run: |
-          ls -la
-          unzip -q -o ./*.zip
-          ls -la RentVPN
 
       - uses: actions/setup-java@v4
         with:
