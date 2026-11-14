@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontWeight
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -168,7 +169,7 @@ fun PowerButton(state: VpnState, onClick: () -> Unit, modifier: Modifier = Modif
             Spacer(Modifier.height(6.dp))
             Text(
                 when (state) {
-                    VpnState.DISCONNECTED -> "Нажмите"
+                    VpnState.DISCONNECTED -> "Подключить"
                     VpnState.CONNECTING -> "Подключение"
                     VpnState.CONNECTED -> "Отключить"
                 },
@@ -177,7 +178,8 @@ fun PowerButton(state: VpnState, onClick: () -> Unit, modifier: Modifier = Modif
                     VpnState.CONNECTING -> Lime
                     VpnState.CONNECTED -> Color(0xFF3A4A10)
                 },
-                fontSize = 12.sp
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium
             )
         }
     }
