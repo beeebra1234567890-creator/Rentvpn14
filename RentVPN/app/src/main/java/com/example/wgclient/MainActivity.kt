@@ -224,8 +224,18 @@ private fun RentVpnApp() {
                     when (tab) {
                         0 -> HomeScreen(
                             state = state, server = server, ping = server?.let { pings[it.raw] },
+                            servers = servers, selectedIndex = selected, pings = pings,
                             traffic = traffic, elapsed = elapsed, message = message,
                             onToggle = { toggle() }, onServers = { tab = 2 }, onPro = { tab = 3 },
+                            onSelectServer = { i ->
+                                val picked = servers[i]
+                                if (picked.supported) {
+                                    if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
+                                    selected = i
+                                    ServerStore.saveSelected(context, picked)
+                                    message = "Выбран: " + picked.name
+                                } else message = picked.unsupportedReason ?: "Протокол не поддерживается"
+                            },
                             wideLayout = wideUi
                         )
                         1 -> SpeedTestScreen(speed, viaVpn = state == VpnState.CONNECTED && (VpnController.isWireGuardConnected() || VpnController.socksForTest(context) != null), onStart = { runSpeed() })
@@ -275,8 +285,10 @@ private fun RentVpnApp() {
 
 @Composable
 private fun HomeScreen(
-    state: VpnState, server: Server?, ping: Int?, traffic: Traffic, elapsed: Long, message: String,
-    onToggle: () -> Unit, onServers: () -> Unit, onPro: () -> Unit, wideLayout: Boolean,
+    state: VpnState, server: Server?, ping: Int?, servers: List<Server>, selectedIndex: Int,
+    pings: Map<String, Int>, traffic: Traffic, elapsed: Long, message: String,
+    onToggle: () -> Unit, onServers: () -> Unit, onPro: () -> Unit,
+    onSelectServer: (Int) -> Unit, wideLayout: Boolean,
 ) {
     if (wideLayout) {
         Row(
@@ -284,11 +296,18 @@ private fun HomeScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(28.dp)
         ) {
-            Box(Modifier.weight(1.05f).fillMaxHeight(), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(320.dp), contentAlignment = Alignment.Center) {
-                    ParticleOrb(state, Modifier.fillMaxSize())
-                    PowerButton(state, onToggle, Modifier.size(236.dp))
+            Column(Modifier.weight(1.05f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Box(Modifier.weight(1.12f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(320.dp), contentAlignment = Alignment.Center) {
+                        ParticleOrb(state, Modifier.fillMaxSize())
+                        PowerButton(state, onToggle, Modifier.size(236.dp))
+                    }
                 }
+                ServerPreviewCard(
+                    servers = servers, selectedIndex = selectedIndex, pings = pings,
+                    onSelect = onSelectServer, onAll = onServers,
+                    modifier = Modifier.weight(0.88f).fillMaxWidth()
+                )
             }
             Column(
                 Modifier.weight(0.95f).fillMaxHeight(),
@@ -388,6 +407,52 @@ private fun HomeScreen(
             }
             ServerPill(server, ping, onServers)
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ServerPreviewCard(
+    servers: List<Server>, selectedIndex: Int, pings: Map<String, Int>,
+    onSelect: (Int) -> Unit, onAll: () -> Unit, modifier: Modifier = Modifier
+) {
+    Card2(modifier) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("ВЫБОР СЕРВЕРА", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp, modifier = Modifier.weight(1f))
+            Text("Все серверы  →", color = Color.White, fontSize = 11.sp,
+                modifier = Modifier.clickable(onClick = onAll))
+        }
+        if (servers.isEmpty()) {
+            Text("Добавь сервер или подписку, чтобы начать", color = Muted, fontSize = 12.sp)
+        } else {
+            servers.take(4).forEachIndexed { index, item ->
+                val actualIndex = index
+                val active = actualIndex == selectedIndex
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(if (active) Color(0xFF222B13) else Color.Transparent)
+                        .clickable(remember { MutableInteractionSource() }, null) { onSelect(actualIndex) }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    FlagBubble(item.name)
+                    Spacer(Modifier.width(9.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(displayName(item.name), color = Color.White, fontSize = 13.sp,
+                            fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(item.protocol.uppercase(), color = Muted, fontSize = 10.sp)
+                    }
+                    val ping = pings[item.raw]
+                    Text(if (ping == null) "—" else if (ping < 0) "Нет ответа" else "$ping мс",
+                        color = if (ping != null && ping in 0..150) Lime else Muted, fontSize = 11.sp)
+                    if (active) {
+                        Spacer(Modifier.width(7.dp))
+                        Box(Modifier.size(9.dp).clip(CircleShape).background(Lime))
+                    }
+                }
+            }
         }
     }
 }
