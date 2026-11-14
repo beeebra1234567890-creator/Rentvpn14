@@ -41,8 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.common.InputImage
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -193,22 +191,6 @@ private fun RentVpnApp() {
             .onFailure { message = "Не удалось прочитать файл" }
     }
 
-    val qrPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        if (uri != null) {
-            runCatching { InputImage.fromFilePath(context, uri) }
-                .onSuccess { image ->
-                    BarcodeScanning.getClient().process(image)
-                        .addOnSuccessListener { codes ->
-                            val value = codes.firstOrNull { !it.rawValue.isNullOrBlank() }?.rawValue
-                            if (value.isNullOrBlank()) message = "QR-код не найден на изображении"
-                            else addInput(value)
-                        }
-                        .addOnFailureListener { message = "Не удалось прочитать QR-код: ${it.message ?: "ошибка"}" }
-                }
-                .onFailure { message = "Не удалось открыть изображение QR-кода" }
-        }
-    }
-
     MaterialTheme(
         colorScheme = darkColorScheme(
             primary = Lime, onPrimary = Color(0xFF111111), background = Bg, surface = Surface1,
@@ -230,7 +212,6 @@ private fun RentVpnApp() {
                         onInput = { input = it },
                         onAdd = { addInput(input) },
                         onFile = { filePicker.launch(arrayOf("*/*")) },
-                        onQr = { qrPicker.launch(arrayOf("image/*")) },
                         onPaste = { clipboard.getText()?.text?.let { addInput(it) } ?: run { message = "Буфер обмена пуст" } },
                         onRefresh = { fetchSubscription(subUrl) },
                         onPick = { i ->
@@ -388,7 +369,7 @@ private fun FlagBubble(name: String) {
 private fun ServerScreen(
     servers: List<Server>, selected: Int, pings: Map<String, Int>, input: String, subUrl: String,
     message: String, busy: Boolean,
-    onInput: (String) -> Unit, onAdd: () -> Unit, onFile: () -> Unit, onQr: () -> Unit, onPaste: () -> Unit,
+    onInput: (String) -> Unit, onAdd: () -> Unit, onFile: () -> Unit, onPaste: () -> Unit,
     onRefresh: () -> Unit, onPick: (Int) -> Unit, onDelete: (Int) -> Unit,
 ) {
     Column(
@@ -412,9 +393,6 @@ private fun ServerScreen(
             ) { Text(if (busy) "Загрузка…" else "Добавить", fontWeight = FontWeight.SemiBold) }
             OutlinedButton(onClick = onPaste, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Из буфера", color = Lime) }
             OutlinedButton(onClick = onFile, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Text("Файл", color = Lime) }
-        }
-        OutlinedButton(onClick = onQr, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-            Text("Импорт QR-кода из изображения", color = Lime)
         }
         if (subUrl.isNotBlank()) {
             OutlinedButton(onClick = onRefresh, enabled = !busy, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
