@@ -313,7 +313,7 @@ private fun HomeScreen(
                 Card2(Modifier.fillMaxWidth()) {
                     Text("ВРЕМЯ СЕАНСА", color = Muted, fontSize = 11.sp, letterSpacing = 1.2.sp)
                     Text(
-                        if (state == VpnState.CONNECTED) ${formatTime(elapsed)} else "00:00:00",
+                        if (state == VpnState.CONNECTED) formatTime(elapsed) else "00:00:00",
                         color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(4.dp))
