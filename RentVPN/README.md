@@ -1,30 +1,31 @@
-# RENT VPN — Android client (v1.2)
+# RENT VPN — Android client
 
-Kotlin + Jetpack Compose. Тёмный интерфейс с лаймовым акцентом (шар из частиц, кнопка питания, статус, скорость, плашка сервера, нижняя навигация), **VLESS** через Xray-core и **WireGuard** через официальную библиотеку.
+Kotlin + Jetpack Compose. Dark interface with lime accent, home connection screen, server list, traffic counters, speed test and profile.
 
-## Что сделано
-- Дизайн по макету: Главная (статус, PRO, таймер, ↑/↓ скорость, шар + кнопка, сервер с пингом), Скорость, Серверы, Профиль. Состояния кнопки: «Нажмите» → «Подключение» → «Отключить».
-- **VLESS**: разбор `vless://` (TCP / WS / gRPC / HTTPUpgrade / XHTTP / h2; TLS / Reality; `flow=xtls-rprx-vision`, SNI, fp, alpn, pbk/sid/spx и т.д.) → JSON-конфиг Xray → `XrayVpnService` (TUN через `VpnService`).
-- Подписки: HTTPS-ссылка (в т.ч. `happ://add/…`), base64-список, список ссылок, файл, буфер обмена. Можно вставить одну `vless://` ссылку или WG-конфиг — сервер добавится в список.
-- TCP-пинг до VLESS-серверов, флаг берётся из эмодзи в названии сервера.
-- Протоколы VMess / Trojan / Shadowsocks по-прежнему только показываются в списке (не подключаются).
+## Implemented engines and formats
 
-## ВАЖНО: нужен движок Xray
-Движок не лежит в Maven, поэтому его нужно положить вручную:
+- **Xray-core:** VLESS (TLS / Reality; TCP, WebSocket, gRPC, HTTPUpgrade, XHTTP and HTTP transports supported by the parser), VMess, Trojan, Shadowsocks, SOCKS5 and HTTP/HTTPS proxy URI adapters.
+- **WireGuard:** official WireGuard Android tunnel library, importing standard `.conf` files.
+- **Imports:** HTTPS subscriptions, Base64 subscription payloads, individual proxy links, text files, clipboard, and QR codes from an image selected on the device.
+- **Connection lifecycle:** one VPN controller, foreground VPN service for Xray, state updates from the service, and delayed DISCONNECTED confirmation until the Xray service closes its tunnel.
 
-1. Скачайте `libv2ray.aar` из релизов проекта **2dust/AndroidLibXrayLite** (или соберите его через `gomobile bind`).
-2. Положите файл в `app/libs/libv2ray.aar`.
-3. Откройте проект в Android Studio (JDK 17), Sync, затем Build → Build APK(s).
+## Important limitations
 
-Код написан под API `AndroidLibXrayLite`: `Libv2ray.initCoreEnv(path, key)`, `Libv2ray.newCoreController(CoreCallbackHandler)`, `CoreController.startLoop(config, tunFd)`, `stopLoop()`. Если в вашей версии AAR сигнатуры отличаются — правится только `XrayVpnService.kt`.
+OpenVPN, IKEv2 and SSH tunnelling are **not implemented** in this project and are not shown as supported. They require separate VPN/tunnel engines; they must not be represented as working merely by accepting their links.
 
-## Что не проверено
-Проект собран «на сухую» — в среде, где его писали, не было Android SDK, поэтому **сборка и запуск на устройстве не выполнялись**. Особенно стоит проверить на реальном телефоне:
-- что ваш `libv2ray.aar` принимает fd TUN-интерфейса в `startLoop` (tun-inbound Xray). Если нет — нужна связка Xray (SOCKS-inbound) + `hev-socks5-tunnel`, как в v2rayNG;
-- Reality / Vision на вашем сервере;
-- вид шара на слабых устройствах (при просадках FPS уменьшите `PER_GROUP` в `Components.kt`).
+QR import currently decodes a QR image selected from the device. It does not run a live camera preview.
 
-## Заметки
-- Процесс приложения исключён из VPN (`addDisallowedApplication`), чтобы соединение Xray к серверу не зацикливалось в туннель.
-- Скорость на экране — трафик приложения до сервера (с учётом шифрования), а не «чистая» скорость внутри туннеля.
-- Серверы хранятся в приватной папке приложения без шифрования. Не делитесь ссылками и PrivateKey.
+## Build
+
+The GitHub Actions workflow downloads `libv2ray.aar` from `2dust/AndroidLibXrayLite`, then builds the debug APK with JDK 17 and Gradle 8.9.
+
+## Device verification still required
+
+A successful CI build confirms compilation and APK packaging only. It does not prove that a server can be reached or that every transport works with a particular provider configuration. Verify on real Android devices:
+- VPN permission, connect/disconnect and reconnect;
+- VLESS TLS / Reality and Vision flow against compatible servers;
+- VMess, Trojan, Shadowsocks, SOCKS5 and HTTP proxy configurations;
+- WireGuard tunnel establishment and route/DNS behaviour;
+- QR image decoding and subscription refresh.
+
+The app stores imported server links in the app's private files directory. Treat subscription URLs and proxy credentials as secrets.
