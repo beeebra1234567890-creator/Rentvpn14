@@ -265,6 +265,18 @@ fun NavIcon(kind: Int, color: Color, modifier: Modifier = Modifier) {
                 drawOval(color, Offset(w * .32f, w * .12f), Size(w * .36f, w * .76f), style = st)
                 drawLine(color, Offset(w * .12f, w * .5f), Offset(w * .88f, w * .5f), st.width, StrokeCap.Round)
             }
+            4 -> { // настройки
+                drawCircle(color, w * .25f, center, style = st)
+                drawCircle(color, w * .09f, center)
+                for (i in 0 until 8) {
+                    val angle = i * (Math.PI / 4.0)
+                    val x1 = w * .34f * kotlin.math.cos(angle).toFloat()
+                    val y1 = w * .34f * kotlin.math.sin(angle).toFloat()
+                    val x2 = w * .45f * kotlin.math.cos(angle).toFloat()
+                    val y2 = w * .45f * kotlin.math.sin(angle).toFloat()
+                    drawLine(color, Offset(center.x + x1, center.y + y1), Offset(center.x + x2, center.y + y2), st.width * 1.2f, StrokeCap.Round)
+                }
+            }
             else -> { // профиль
                 drawCircle(color, w * .17f, Offset(w * .5f, w * .32f), style = st)
                 drawArc(color, 180f, 180f, false, Offset(w * .2f, w * .56f), Size(w * .6f, w * .5f), style = st)
