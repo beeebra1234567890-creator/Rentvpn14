@@ -1,0 +1,26 @@
+name: Extract Android source
+on:
+  push:
+    branches: [source-extract]
+permissions:
+  contents: write
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: source-extract
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract source archive
+        run: |
+          unzip -q -o "RENT_VPN_vless_source (7).zip"
+          test -f RentVPN/settings.gradle.kts
+          find RentVPN -maxdepth 4 -type f | sort | head -200
+      - name: Commit extracted project
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add RentVPN
+          git commit -m "Extract RentVPN Android source for maintenance"
+          git push origin source-extract
