@@ -68,7 +68,7 @@ object ServerStore {
 
     fun isSubscriptionUrl(s: String): Boolean {
         val t = normalizeUrl(s)
-        return t.startsWith("https://") && !t.contains('\n') && !t.contains(' ')
+        return t.startsWith("https://") && !t.substringAfter("://").substringBefore('/').contains('@') && !t.contains('\n') && !t.contains(' ')
     }
 
     suspend fun fetchText(context: Context, address: String): String = withContext(Dispatchers.IO) {
