@@ -1,0 +1,3 @@
+RENT VPN build 19
+Source: Build APK #18 (commit b79156a454d45ffb444d0b153577b3becf492c51)
+This marker triggers a fresh build; application source is unchanged.
