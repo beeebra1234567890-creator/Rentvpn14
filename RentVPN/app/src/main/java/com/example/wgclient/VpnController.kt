@@ -40,7 +40,7 @@ object VpnController {
     val connectedAt: StateFlow<Long> = _connectedAt.asStateFlow()
 
     private var wgBackend: GoBackend? = null
-    @Volatile private var activeProtocol: String = ""
+    private var activeProtocol: String = ""
 
     private val wgTunnel = object : Tunnel {
         override fun getName(): String = "rentvpn"
@@ -69,13 +69,10 @@ object VpnController {
                 val st = runCatching { VpnState.valueOf(i.getStringExtra(XrayVpnService.EXTRA_STATE) ?: "") }
                     .getOrNull() ?: return
                 i.getStringExtra(XrayVpnService.EXTRA_ERROR)?.let { _error.value = it }
-                if (st != VpnState.DISCONNECTED && activeProtocol.isEmpty()) activeProtocol = "vless"
+                if (activeProtocol.isEmpty()) activeProtocol = "vless"
                 if (st == VpnState.CONNECTED) {
                     _connectedAt.value = i.getLongExtra(XrayVpnService.EXTRA_CONNECTED_AT, 0L)
                         .takeIf { it > 0 } ?: SystemClock.elapsedRealtime()
-                } else if (st == VpnState.DISCONNECTED) {
-                    _connectedAt.value = 0L
-                    activeProtocol = ""
                 }
                 _state.value = st
             }
@@ -85,19 +82,12 @@ object VpnController {
 
     // ---- внутренние обновления состояния ----
     internal fun setState(s: VpnState) {
-        if (s == VpnState.CONNECTED) {
-            _connectedAt.value = SystemClock.elapsedRealtime()
-        } else if (s == VpnState.DISCONNECTED) {
-            _connectedAt.value = 0L
-            activeProtocol = ""
-        }
+        if (s == VpnState.CONNECTED) _connectedAt.value = SystemClock.elapsedRealtime()
         _state.value = s
     }
 
     internal fun fail(message: String) {
         _error.value = message
-        _connectedAt.value = 0L
-        activeProtocol = ""
         _state.value = VpnState.DISCONNECTED
     }
 
@@ -129,10 +119,6 @@ object VpnController {
     /** Разрешение VpnService уже должно быть выдано (VpnService.prepare). */
     fun connect(context: Context, server: Server) {
         if (_state.value != VpnState.DISCONNECTED) return
-        if (!server.supported) {
-            fail(server.unsupportedReason ?: "Конфигурация не поддерживается")
-            return
-        }
         val app = context.applicationContext
         _error.value = null
         _state.value = VpnState.CONNECTING
@@ -171,9 +157,8 @@ object VpnController {
         val app = context.applicationContext
         when (activeProtocol) {
             "vless" -> {
-                // Wait for the service to close Xray and TUN and publish DISCONNECTED.
-                val stopped = app.stopService(Intent(app, XrayVpnService::class.java))
-                if (!stopped) setState(VpnState.DISCONNECTED)
+                app.stopService(Intent(app, XrayVpnService::class.java))
+                setState(VpnState.DISCONNECTED)
             }
             "wireguard" -> scope.launch {
                 runCatching { wg(app).setState(wgTunnel, Tunnel.State.DOWN, null) }
