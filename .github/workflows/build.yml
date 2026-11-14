@@ -44,3 +44,5 @@ jobs:
         with:
           name: RENT-VPN-debug-apk
           path: RentVPN/app/build/outputs/apk/debug/*.apk
+
+# Rebuild triggered by ChatGPT to produce a fresh APK artifact.
