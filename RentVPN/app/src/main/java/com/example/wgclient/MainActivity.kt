@@ -571,6 +571,114 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 // ======================= NAV =======================
 
 @Composable
+private fun TabletNav(selected: Int, onSelect: (Int) -> Unit) {
+    val items = listOf("Главная", "Скорость", "Серверы", "Профиль", "Настройки")
+    Column(
+        Modifier.width(190.dp).fillMaxHeight().background(Color(0xFF090B09))
+            .padding(horizontal = 14.dp, vertical = 22.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Text("RENT", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.Black)
+        Text("VPN", color = Lime, fontSize = 25.sp, fontWeight = FontWeight.Black)
+        Text("Быстрый. Безопасный.", color = Muted, fontSize = 11.sp)
+        Spacer(Modifier.height(22.dp))
+        items.forEachIndexed { i, label ->
+            val active = selected == i
+            Row(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp))
+                    .background(if (active) Lime else Color.Transparent)
+                    .clickable(remember { MutableInteractionSource() }, null) { onSelect(i) }
+                    .padding(horizontal = 12.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                NavIcon(i, if (active) Color(0xFF11150A) else Muted, Modifier.size(22.dp))
+                Spacer(Modifier.width(12.dp))
+                Text(label, color = if (active) Color(0xFF11150A) else Color.White,
+                    fontSize = 13.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Medium)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        Card2(Modifier.fillMaxWidth()) {
+            Text("RENT VPN", color = Lime, fontWeight = FontWeight.Bold)
+            Text("Защита соединения", color = Muted, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun SettingsScreen() {
+    val context = LocalContext.current
+    var dns by remember { mutableStateOf(VpnSettings.dnsMode(context)) }
+    var mtu by remember { mutableFloatStateOf(VpnSettings.mtu(context).toFloat()) }
+    var ipv6 by remember { mutableStateOf(VpnSettings.ipv6Enabled(context)) }
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 22.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        Text("Настройки", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text("Тонкая настройка VPN-соединения", color = Muted, fontSize = 13.sp)
+        Card2 {
+            Text("СЕТЬ И DNS", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Text("DNS-сервер", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text("Выбери DNS, через который будут разрешаться домены внутри VPN", color = Muted, fontSize = 12.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                FilterChip(selected = dns == VpnSettings.DNS_CLOUDFLARE, onClick = {
+                    dns = VpnSettings.DNS_CLOUDFLARE; VpnSettings.setDnsMode(context, dns)
+                }, label = { Text("Cloudflare") })
+                FilterChip(selected = dns == VpnSettings.DNS_GOOGLE, onClick = {
+                    dns = VpnSettings.DNS_GOOGLE; VpnSettings.setDnsMode(context, dns)
+                }, label = { Text("Google") })
+                FilterChip(selected = dns == VpnSettings.DNS_QUAD9, onClick = {
+                    dns = VpnSettings.DNS_QUAD9; VpnSettings.setDnsMode(context, dns)
+                }, label = { Text("Quad9") })
+            }
+            Divider(color = LineC)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("IPv6", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text("Маршрутизировать IPv6-трафик через туннель", color = Muted, fontSize = 12.sp)
+                }
+                Switch(checked = ipv6, onCheckedChange = {
+                    ipv6 = it; VpnSettings.setIpv6Enabled(context, it)
+                })
+            }
+        }
+        Card2 {
+            Text("ПАРАМЕТРЫ ТУННЕЛЯ", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("MTU", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text("Максимальный размер пакета туннеля", color = Muted, fontSize = 12.sp)
+                }
+                Text(mtu.toInt().toString(), color = Lime, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+            Slider(value = mtu, onValueChange = { mtu = it }, onValueChangeFinished = {
+                VpnSettings.setMtu(context, mtu.toInt())
+            }, valueRange = 1280f..1500f, steps = 10)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("1280 · совместимость", color = Muted, fontSize = 10.sp)
+                Text("1500 · стандарт", color = Muted, fontSize = 10.sp)
+            }
+            Text("Изменения MTU, DNS и IPv6 вступят в силу при следующем подключении.", color = Warn, fontSize = 11.sp)
+        }
+        Card2 {
+            Text("СОСТОЯНИЕ И ДИАГНОСТИКА", color = Lime, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+            InfoRow("DNS сейчас", when (dns) {
+                VpnSettings.DNS_GOOGLE -> "Google · 8.8.8.8 / 8.8.4.4"
+                VpnSettings.DNS_QUAD9 -> "Quad9 · 9.9.9.9 / 149.112.112.112"
+                else -> "Cloudflare · 1.1.1.1 / 1.0.0.1"
+            })
+            InfoRow("IPv6", if (ipv6) "Включён в VPN-маршруте" else "Выключен в VPN-маршруте")
+            InfoRow("MTU", mtu.toInt().toString())
+            InfoRow("Поддерживаемые движки", "Xray-core и WireGuard")
+        }
+        Text("Если некоторые сайты не открываются, попробуй MTU 1380 или DNS Cloudflare. Для применения настроек переподключи VPN.",
+            color = Muted, fontSize = 12.sp)
+    }
+}
+
+@Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
     val items = listOf("Главная", "Скорость", "Серверы", "Профиль", "Настройки")
     Row(
