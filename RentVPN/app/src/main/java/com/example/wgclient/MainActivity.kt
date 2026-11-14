@@ -216,52 +216,57 @@ private fun RentVpnApp() {
             onSurface = Color.White, onBackground = Color.White, outline = LineC
         )
     ) {
-        Column(Modifier.fillMaxSize().background(Bg).statusBarsPadding()) {
-            Box(Modifier.weight(1f)) {
-                when (tab) {
-                    0 -> HomeScreen(
-                        state = state, server = server, ping = server?.let { pings[it.raw] },
-                        traffic = traffic, elapsed = elapsed, message = message,
-                        onToggle = { toggle() }, onServers = { tab = 2 }, onPro = { tab = 3 },
-                        wideLayout = LocalConfiguration.current.screenWidthDp >= 700
-                    )
-                    1 -> SpeedTestScreen(speed, viaVpn = state == VpnState.CONNECTED && (VpnController.isWireGuardConnected() || VpnController.socksForTest(context) != null), onStart = { runSpeed() })
-                    2 -> ServerScreen(
-                        servers = servers, selected = selected, pings = pings, input = input,
-                        subUrl = subUrl, message = message, busy = busy,
-                        onInput = { input = it },
-                        onAdd = { addInput(input) },
-                        onFile = { filePicker.launch(arrayOf("*/*")) },
-                        onQr = { qrPicker.launch(arrayOf("image/*")) },
-                        onPaste = { clipboard.getText()?.text?.let { addInput(it) } ?: run { message = "Буфер обмена пуст" } },
-                        onRefresh = { fetchSubscription(subUrl) },
-                        onPick = { i ->
-                            val s = servers[i]
-                            if (!s.supported) message = "${s.name}: ${s.unsupportedReason}"
-                            else {
-                                if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
-                                selected = i; ServerStore.saveSelected(context, s); message = "Выбран: ${s.name}"
+        val wideUi = LocalConfiguration.current.screenWidthDp >= 700
+        Row(Modifier.fillMaxSize().background(Bg).statusBarsPadding()) {
+            if (wideUi) TabletNav(tab) { tab = it }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+                Box(Modifier.weight(1f)) {
+                    when (tab) {
+                        0 -> HomeScreen(
+                            state = state, server = server, ping = server?.let { pings[it.raw] },
+                            traffic = traffic, elapsed = elapsed, message = message,
+                            onToggle = { toggle() }, onServers = { tab = 2 }, onPro = { tab = 3 },
+                            wideLayout = wideUi
+                        )
+                        1 -> SpeedTestScreen(speed, viaVpn = state == VpnState.CONNECTED && (VpnController.isWireGuardConnected() || VpnController.socksForTest(context) != null), onStart = { runSpeed() })
+                        2 -> ServerScreen(
+                            servers = servers, selected = selected, pings = pings, input = input,
+                            subUrl = subUrl, message = message, busy = busy,
+                            onInput = { input = it },
+                            onAdd = { addInput(input) },
+                            onFile = { filePicker.launch(arrayOf("*/*")) },
+                            onQr = { qrPicker.launch(arrayOf("image/*")) },
+                            onPaste = { clipboard.getText()?.text?.let { addInput(it) } ?: run { message = "Буфер обмена пуст" } },
+                            onRefresh = { fetchSubscription(subUrl) },
+                            onPick = { i ->
+                                val picked = servers[i]
+                                if (!picked.supported) message = "\${picked.name}: \${picked.unsupportedReason}"
+                                else {
+                                    if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
+                                    selected = i; ServerStore.saveSelected(context, picked); message = "Выбран: \${picked.name}"
+                                }
+                            },
+                            onDelete = { i ->
+                                val next = servers.filterIndexed { j, _ -> j != i }
+                                val keepRaw = server?.raw
+                                servers = next; ServerStore.save(context, next)
+                                selected = next.indexOfFirst { it.raw == keepRaw && it.supported }.let { k ->
+                                    if (k >= 0) k else next.indexOfFirst { it.supported }
+                                }
+                                ServerStore.saveSelected(context, next.getOrNull(selected))
                             }
-                        },
-                        onDelete = { i ->
-                            val next = servers.filterIndexed { j, _ -> j != i }
-                            val keepRaw = server?.raw
-                            servers = next; ServerStore.save(context, next)
-                            selected = next.indexOfFirst { it.raw == keepRaw && it.supported }.let { k ->
-                                if (k >= 0) k else next.indexOfFirst { it.supported }
-                            }
-                            ServerStore.saveSelected(context, next.getOrNull(selected))
-                        }
-                    )
-                    else -> ProfileScreen(onClear = {
-                        if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
-                        servers = emptyList(); selected = -1; subUrl = ""; pings.clear()
-                        ServerStore.clear(context)
-                        message = "Локальные данные удалены"
-                    })
+                        )
+                        3 -> ProfileScreen(onClear = {
+                            if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
+                            servers = emptyList(); selected = -1; subUrl = ""; pings.clear()
+                            ServerStore.clear(context)
+                            message = "Локальные данные удалены"
+                        })
+                        else -> SettingsScreen()
+                    }
                 }
+                if (!wideUi) BottomNav(tab) { tab = it }
             }
-            BottomNav(tab) { tab = it }
         }
     }
 }
@@ -567,7 +572,7 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 
 @Composable
 private fun BottomNav(selected: Int, onSelect: (Int) -> Unit) {
-    val items = listOf("Главная", "Скорость", "Серверы", "Профиль")
+    val items = listOf("Главная", "Скорость", "Серверы", "Профиль", "Настройки")
     Row(
         Modifier.fillMaxWidth().background(Bg).navigationBarsPadding().padding(top = 8.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceEvenly
