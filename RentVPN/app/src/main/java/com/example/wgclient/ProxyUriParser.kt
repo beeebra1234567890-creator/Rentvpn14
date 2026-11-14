@@ -120,22 +120,37 @@ object ProxyUriParser {
 
     private fun parseShadowsocks(raw: String): Parsed {
         val uri = URI(raw)
-        val host = uri.host ?: throw IllegalArgumentException("Shadowsocks: нет адреса")
-        val port = if (uri.port > 0) uri.port else throw IllegalArgumentException("Shadowsocks: нет порта")
-        val userInfo = uri.rawUserInfo ?: throw IllegalArgumentException("Shadowsocks: нет метода и пароля")
-        val decoded = runCatching { decodeBase64(userInfo) }.getOrElse { URLDecoder.decode(userInfo, "UTF-8") }
-        val method: String
-        val password: String
-        if (decoded.contains(':')) {
+        var host = uri.host
+        var port = uri.port
+        var method = ""
+        var password = ""
+        val userInfo = uri.rawUserInfo
+        if (host != null && port > 0 && !userInfo.isNullOrBlank()) {
+            val decoded = runCatching { decodeBase64(userInfo) }.getOrElse { URLDecoder.decode(userInfo, "UTF-8") }
+            require(decoded.contains(':')) { "Shadowsocks: некорректные учётные данные" }
             method = decoded.substringBefore(':')
             password = decoded.substringAfter(':')
         } else {
-            val legacy = decodeBase64(uri.rawSchemeSpecificPart.substringBefore('#').substringAfter("://"))
-            val authority = legacy.substringBefore('@')
-            method = authority.substringBefore(':')
-            password = authority.substringAfter(':', "")
+            // Legacy SIP002 form: ss://BASE64(method:password@host:port)#tag
+            val payload = decodeBase64(raw.substringAfter("://").substringBefore('#'))
+            val credentials = payload.substringBefore('@')
+            val endpoint = payload.substringAfter('@', "")
+            require(endpoint.isNotBlank() && credentials.contains(':')) { "Shadowsocks: некорректная ссылка" }
+            method = credentials.substringBefore(':')
+            password = credentials.substringAfter(':')
+            val hp = endpoint.substringAfterLast('@')
+            if (hp.startsWith("[")) {
+                val close = hp.indexOf(']')
+                require(close > 0) { "Shadowsocks: некорректный IPv6" }
+                host = hp.substring(1, close)
+                port = hp.substring(close + 2).toIntOrNull() ?: 0
+            } else {
+                host = hp.substringBeforeLast(':')
+                port = hp.substringAfterLast(':').toIntOrNull() ?: 0
+            }
         }
-        require(method.isNotBlank() && password.isNotBlank()) { "Shadowsocks: некорректные учётные данные" }
+        require(!host.isNullOrBlank() && port in 1..65535) { "Shadowsocks: неверный сервер или порт" }
+        require(method.isNotBlank() && password.isNotBlank()) { "Shadowsocks: нет метода и пароля" }
         val outbound = JSONObject().put("tag", "proxy").put("protocol", "shadowsocks")
             .put("settings", JSONObject().put("servers", JSONArray().put(
                 JSONObject().put("address", host).put("port", port).put("method", method).put("password", password))))
