@@ -229,6 +229,7 @@ private fun RentVpnApp() {
             if (wideUi) TabletNav(tab) { tab = it }
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 Box(Modifier.weight(1f)) {
+                    StarField(Modifier.matchParentSize())
                     when (tab) {
                         0 -> HomeScreen(
                             state = state, server = server, ping = server?.let { pings[it.raw] },
@@ -258,10 +259,10 @@ private fun RentVpnApp() {
                             onRefresh = { fetchSubscription(subUrl) },
                             onPick = { i ->
                                 val picked = servers[i]
-                                if (!picked.supported) message = "\${picked.name}: \${picked.unsupportedReason}"
+                                if (!picked.supported) message = "${picked.name}: ${picked.unsupportedReason}"
                                 else {
                                     if (state != VpnState.DISCONNECTED) VpnController.disconnect(context)
-                                    selected = i; ServerStore.saveSelected(context, picked); message = "Выбран: \${picked.name}"
+                                    selected = i; ServerStore.saveSelected(context, picked); message = "Выбран: ${picked.name}"
                                 }
                             },
                             onDelete = { i ->

@@ -41,16 +41,43 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 // ---------- Палитра (чёрный фон + лаймовый акцент) ----------
-val Bg = Color(0xFF000000)
-val Lime = Color(0xFFD7F55F)
-val LimeDeep = Color(0xFFBFE03F)
-val Surface1 = Color(0xFF161616)
-val Surface2 = Color(0xFF232323)
-val LineC = Color(0xFF2B2B2B)
-val Muted = Color(0xFF8C8C8C)
-val Good = Color(0xFF3DDC5A)
+val Bg = Color(0xFF080611)
+val Lime = Color(0xFFB56BFF)
+val LimeDeep = Color(0xFF7136C8)
+val Surface1 = Color(0xFF171222)
+val Surface2 = Color(0xFF211832)
+val LineC = Color(0xFF38284D)
+val Muted = Color(0xFFAAA0BA)
+val Good = Color(0xFF55D99A)
 val Warn = Color(0xFFFFC857)
 val Bad = Color(0xFFFF5C6C)
+
+// ---------- Ненавязчивое мерцание звёзд на фоне ----------
+@Composable
+fun StarField(modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "starfield")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart),
+        label = "starTwinkle"
+    )
+    val stars = remember {
+        val random = Random(2411)
+        List(54) { Triple(random.nextFloat(), random.nextFloat(), 0.35f + random.nextFloat() * 1.25f) }
+    }
+    Canvas(modifier) {
+        stars.forEachIndexed { index, star ->
+            val wave = (sin(phase + index * 1.71f) + 1f) / 2f
+            val alpha = 0.12f + wave * 0.34f
+            drawCircle(
+                color = Color(0xFFDCC5FF).copy(alpha = alpha),
+                radius = (star.third + wave * 0.45f) * density,
+                center = Offset(star.first * size.width, star.second * size.height)
+            )
+        }
+    }
+}
 
 // ---------- Шар из частиц ----------
 private const val GROUPS = 3
