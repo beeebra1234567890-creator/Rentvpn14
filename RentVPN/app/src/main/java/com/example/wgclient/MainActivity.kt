@@ -215,7 +215,7 @@ private fun RentVpnApp() {
             primary = Lime, onPrimary = Color(0xFF111111), background = Bg, surface = Surface1,
             onSurface = Color.White, onBackground = Color.White, outline = LineC
         ),
-        typography = Typography(defaultFontFamily = FontFamily.SansSerif),
+        typography = Typography(),
         shapes = Shapes(
             extraSmall = RoundedCornerShape(8.dp),
             small = RoundedCornerShape(10.dp),
