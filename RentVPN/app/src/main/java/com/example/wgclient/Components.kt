@@ -56,7 +56,7 @@ val Bad = Color(0xFFFF5C6C)
 @Composable
 fun StarField(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "starfield")
-    val phase by transition.animateFloat(
+    val phase = transition.animateFloat(
         initialValue = 0f,
         targetValue = (2 * PI).toFloat(),
         animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart),
@@ -68,7 +68,7 @@ fun StarField(modifier: Modifier = Modifier) {
     }
     Canvas(modifier) {
         stars.forEachIndexed { index, star ->
-            val wave = (sin(phase + index * 1.71f) + 1f) / 2f
+            val wave = (sin(phase.value + index * 1.71f) + 1f) / 2f
             val alpha = 0.12f + wave * 0.34f
             drawCircle(
                 color = Color(0xFFDCC5FF).copy(alpha = alpha),
